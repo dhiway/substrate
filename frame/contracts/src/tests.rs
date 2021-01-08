@@ -243,7 +243,7 @@ parameter_types! {
 	pub const DepositPerStorageByte: u64 = 10_000;
 	pub const DepositPerStorageItem: u64 = 10_000;
 	pub RentFraction: Perbill = Perbill::from_rational_approximation(4u32, 10_000u32);
-	pub const SurchargeReward: u64 = 150;
+	pub const SurchargeReward: u64 = 500_000;
 	pub const MaxDepth: u32 = 100;
 	pub const MaxValueSize: u32 = 16_384;
 	pub const DeletionQueueDepth: u32 = 1024;
@@ -2473,4 +2473,33 @@ fn deletion_queue_full() {
 		// Contract should be alive because removal failed
 		<ContractInfoOf::<Test>>::get(&addr).unwrap().get_alive().unwrap();
 	});
+}
+
+#[test]
+fn surcharge_reward_capped_by_rent_payed() {
+	let (wasm, code_hash) = compile_module::<Test>("set_rent").unwrap();
+
+	ExtBuilder::default()
+		.existential_deposit(50)
+		.build()
+		.execute_with(|| {
+			// Create
+			let _ = Balances::deposit_creating(&ALICE, 1_000_000);
+			assert_ok!(Contracts::put_code(Origin::signed(ALICE), wasm));
+			assert_ok!(Contracts::instantiate(
+				Origin::signed(ALICE),
+				30_000,
+				GAS_LIMIT, code_hash.into(),
+				<BalanceOf<Test>>::max_value().encode(), // rent allowance
+				vec![],
+			));
+			let addr = Contracts::contract_address(&ALICE, &code_hash, &[]);
+			let contract = <ContractInfoOf::<Test>>::get(&addr).unwrap().get_alive().unwrap();
+			let balance = Balances::free_balance(&ALICE);
+			let reward = <Test as Config>::SurchargeReward::get();
+			assert!(reward > contract.rent_payed);
+			assert_ok!(Contracts::claim_surcharge(Origin::none(), addr.clone(), Some(ALICE)));
+			let capped_reward = reward.min(contract.rent_payed);
+			assert_eq!(balance + capped_reward, Balances::free_balance(&ALICE));
+		});
 }
