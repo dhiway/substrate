@@ -27,7 +27,7 @@ use codec::{Encode, Decode};
 use sp_std::prelude::*;
 use sp_std::marker::PhantomData;
 use sp_io::hashing::blake2_256;
-use sp_runtime::traits::Bounded;
+use sp_runtime::traits::{Bounded, Zero};
 use sp_core::crypto::UncheckedFrom;
 use frame_support::{
 	dispatch::DispatchResult,
@@ -184,6 +184,7 @@ where
 					trie_id,
 					deduct_block: <frame_system::Module<T>>::block_number(),
 					rent_allowance: <BalanceOf<T>>::max_value(),
+					rent_payed: <BalanceOf<T>>::zero(),
 					pair_count: 0,
 					last_write: None,
 				}

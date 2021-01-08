@@ -481,6 +481,7 @@ where
 			pair_count: origin_contract.pair_count,
 			code_hash,
 			rent_allowance,
+			rent_payed: <BalanceOf<T>>::zero(),
 			deduct_block: current_block,
 			last_write,
 		}));
